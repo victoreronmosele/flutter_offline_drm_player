@@ -17,10 +17,16 @@ class BarePlayerPlugin {
         onKeyAvailable: onLicenseKeyAvailable);
   }
 
-  Future<void> playDRMOnline(
-      {required String url, required String licenseUrl}) async {
-    return BarePlayerPluginPlatform.instance
-        .playDRMOnline(url: url, licenseUrl: licenseUrl);
+  Future<void> playDRMOnline({
+    required String url,
+    required String licenseUrl,
+     Map<String, String>? licenseRequestHeader,
+  }) async {
+    return BarePlayerPluginPlatform.instance.playDRMOnline(
+      url: url,
+      licenseUrl: licenseUrl,
+      licenseRequestHeader: licenseRequestHeader,
+    );
   }
 
   Future<void> playDRMOffline(

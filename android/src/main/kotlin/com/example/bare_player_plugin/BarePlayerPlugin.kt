@@ -68,6 +68,10 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
 
             val licenseUrl = call.argument<String>("licenseUrl")
 
+
+            val  licenseRequestHeader: Map<String,String>? = call.argument<Map<String,String>>("licenseRequestHeader")
+            print ("licenseRequestHeader is $licenseRequestHeader")
+
             if (url == null) {
                 result.error("URL_NOT_FOUND", "URL not found", null)
                 return
@@ -83,6 +87,7 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
             playAudioDrmOnline(
                 url = url,
                 licenseUrl = licenseUrl,
+                licenseRequestHeader = licenseRequestHeader,
                 player = player!!
             )
 
@@ -168,12 +173,21 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
     }
 
 
-    private fun playAudioDrmOnline(url: String, licenseUrl: String, player: ExoPlayer) {
+    private fun playAudioDrmOnline(url: String, licenseUrl: String, licenseRequestHeader:Map<String,String>?, player: ExoPlayer) {
         try {
             print("playAudioDrmOnline")
             val defaultHttpDataSourceFactory = DefaultHttpDataSource.Factory()
-            val drmConfig = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
+
+            var drmConfig : MediaItem.DrmConfiguration.Builder
+            if(licenseRequestHeader != null){
+                 drmConfig = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
                 .setLicenseUri(licenseUrl)
+                .setLicenseRequestHeaders(licenseRequestHeader)
+            } else {
+                 drmConfig = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
+                .setLicenseUri(licenseUrl)
+            }
+
             val mediaItem = MediaItem.Builder()
                 .setUri(url)
                 .setDrmConfiguration(drmConfig.build())

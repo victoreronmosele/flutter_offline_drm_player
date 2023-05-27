@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:bare_player_plugin_example/shared_preferences_util.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +8,7 @@ import 'package:flutter_offline/flutter_offline.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
@@ -31,6 +29,17 @@ class _MyAppState extends State<MyApp> {
       'https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd';
   final licenseUrl =
       'https://proxy.uat.widevine.com/proxy?provider=widevine_test';
+
+//multidrm singlekey audio only
+  final testAudioUri =
+      "https://media.axprod.net/TestVectors/v7-MultiDRM-SingleKey/Manifest_AudioOnly.mpd";
+  final testLicenseUrl =
+      "https://drm-widevine-licensing.axtest.net/AcquireLicense";
+
+  final licenseRequestHeader = {
+    "X-AxDRM-Message":
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ2ZXJzaW9uIjoxLCJjb21fa2V5X2lkIjoiYjMzNjRlYjUtNTFmNi00YWUzLThjOTgtMzNjZWQ1ZTMxYzc4IiwibWVzc2FnZSI6eyJ0eXBlIjoiZW50aXRsZW1lbnRfbWVzc2FnZSIsInZlcnNpb24iOjIsImxpY2Vuc2UiOnsiYWxsb3dfcGVyc2lzdGVuY2UiOnRydWV9LCJjb250ZW50X2tleXNfc291cmNlIjp7ImlubGluZSI6W3siaWQiOiI5ZWI0MDUwZC1lNDRiLTQ4MDItOTMyZS0yN2Q3NTA4M2UyNjYiLCJlbmNyeXB0ZWRfa2V5IjoibEszT2pITFlXMjRjcjJrdFI3NGZudz09IiwidXNhZ2VfcG9saWN5IjoiUG9saWN5IEEifV19LCJjb250ZW50X2tleV91c2FnZV9wb2xpY2llcyI6W3sibmFtZSI6IlBvbGljeSBBIiwicGxheXJlYWR5Ijp7Im1pbl9kZXZpY2Vfc2VjdXJpdHlfbGV2ZWwiOjE1MCwicGxheV9lbmFibGVycyI6WyI3ODY2MjdEOC1DMkE2LTQ0QkUtOEY4OC0wOEFFMjU1QjAxQTciXX19XX19.W2FbPDSDaq-LeeLfOnbpTMa-zCmXh8RLChEVDYvdcVw"
+  };
 
   String _url = 'Not Available';
   String playbackState = 'Not Available';
@@ -130,9 +139,11 @@ class _MyAppState extends State<MyApp> {
                     duration: Duration(milliseconds: connected ? 600 : 300),
                     opacity: !connected ? 1.0 : 0.0,
                     child: Container(
-                      color: connected ? Color(0xFF00EE44) : Color(0xFFEE4400),
+                      color: connected
+                          ? const Color(0xFF00EE44)
+                          : const Color(0xFFEE4400),
                       child: Center(
-                        child: Text("${connected ? 'ONLINE' : 'OFFLINE'}"),
+                        child: Text(connected ? 'ONLINE' : 'OFFLINE'),
                       ),
                     ),
                   ),
@@ -182,6 +193,23 @@ class _MyAppState extends State<MyApp> {
                       foregroundColor: Colors.white,
                     ),
                     child: const Text('Play Online Audio With DRM Protection'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _source = 'Online (DRM) With LicenseHeader';
+                      });
+                      _barePlayerPlugin.playDRMOnline(
+                          url: testAudioUri,
+                          licenseUrl: testLicenseUrl,
+                          licenseRequestHeader: licenseRequestHeader);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text(
+                        'Play Online Audio With DRM Protection and headerRequest'),
                   ),
                   const SizedBox(height: 20),
                   Column(

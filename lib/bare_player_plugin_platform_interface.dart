@@ -35,16 +35,20 @@ abstract class BarePlayerPluginPlatform extends PlatformInterface {
       {required void Function(String) onPlaybackStateChanged,
       required void Function(String) onIsPlayingChanged,
       required void Function(String) onUrlChanged,
-      required void Function (String) onKeyAvailable
-      }) {
+      required void Function(String) onKeyAvailable}) {
     throw UnimplementedError('setUpStateListener() has not been implemented.');
   }
 
-  Future<void> playDRMOnline({required String url, required String licenseUrl}) {
+  Future<void> playDRMOnline({
+    required String url,
+    required String licenseUrl,
+    Map<String, String>? licenseRequestHeader,
+  }) {
     throw UnimplementedError('playDRM() has not been implemented.');
   }
 
-  Future<void> playDRMOffline({required String url, required String licenseUrl, required String key}) {
+  Future<void> playDRMOffline(
+      {required String url, required String licenseUrl, required String key}) {
     throw UnimplementedError('playDRM() has not been implemented.');
   }
 
