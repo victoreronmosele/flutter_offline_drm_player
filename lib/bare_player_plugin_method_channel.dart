@@ -53,11 +53,15 @@ class MethodChannelBarePlayerPlugin extends BarePlayerPluginPlatform {
   }
 
   @override
-  Future<void> playDRMOnline(
-      {required String url, required String licenseUrl}) async {
+  Future<void> playDRMOnline({
+    required String url,
+    required String licenseUrl,
+    Map<String, String>? licenseRequestHeader,
+  }) async {
     methodChannel.invokeMethod<void>('playDRMOnline', <String, dynamic>{
       'url': url,
       'licenseUrl': licenseUrl,
+      'licenseRequestHeader': licenseRequestHeader
     });
   }
 
