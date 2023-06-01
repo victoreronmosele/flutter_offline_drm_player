@@ -25,17 +25,16 @@ class _MyAppState extends State<MyApp> {
 
   final nonEncryptedUrl =
       'https://samples-files.com/samples/Audio/mp3/sample-file-1.mp3';
+
   final encryptedUrl =
       'https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd';
   final licenseUrl =
       'https://proxy.uat.widevine.com/proxy?provider=widevine_test';
 
-//multidrm singlekey audio only
-  final testAudioUri =
+  final encryptedUrlWithHeaders =
       "https://media.axprod.net/TestVectors/v7-MultiDRM-SingleKey/Manifest_AudioOnly.mpd";
-  final testLicenseUrl =
+  final licenseUrlWithHeaders =
       "https://drm-widevine-licensing.axtest.net/AcquireLicense";
-
   final licenseRequestHeader = {
     "X-AxDRM-Message":
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ2ZXJzaW9uIjoxLCJjb21fa2V5X2lkIjoiYjMzNjRlYjUtNTFmNi00YWUzLThjOTgtMzNjZWQ1ZTMxYzc4IiwibWVzc2FnZSI6eyJ0eXBlIjoiZW50aXRsZW1lbnRfbWVzc2FnZSIsInZlcnNpb24iOjIsImxpY2Vuc2UiOnsiYWxsb3dfcGVyc2lzdGVuY2UiOnRydWV9LCJjb250ZW50X2tleXNfc291cmNlIjp7ImlubGluZSI6W3siaWQiOiI5ZWI0MDUwZC1lNDRiLTQ4MDItOTMyZS0yN2Q3NTA4M2UyNjYiLCJlbmNyeXB0ZWRfa2V5IjoibEszT2pITFlXMjRjcjJrdFI3NGZudz09IiwidXNhZ2VfcG9saWN5IjoiUG9saWN5IEEifV19LCJjb250ZW50X2tleV91c2FnZV9wb2xpY2llcyI6W3sibmFtZSI6IlBvbGljeSBBIiwicGxheXJlYWR5Ijp7Im1pbl9kZXZpY2Vfc2VjdXJpdHlfbGV2ZWwiOjE1MCwicGxheV9lbmFibGVycyI6WyI3ODY2MjdEOC1DMkE2LTQ0QkUtOEY4OC0wOEFFMjU1QjAxQTciXX19XX19.W2FbPDSDaq-LeeLfOnbpTMa-zCmXh8RLChEVDYvdcVw"
@@ -200,8 +199,8 @@ class _MyAppState extends State<MyApp> {
                         _source = 'Online (DRM) With LicenseHeader';
                       });
                       _barePlayerPlugin.playDRMOnline(
-                          url: testAudioUri,
-                          licenseUrl: testLicenseUrl,
+                          url: encryptedUrlWithHeaders,
+                          licenseUrl: licenseUrlWithHeaders,
                           licenseRequestHeader: licenseRequestHeader);
                     },
                     style: ElevatedButton.styleFrom(
@@ -209,7 +208,7 @@ class _MyAppState extends State<MyApp> {
                       foregroundColor: Colors.white,
                     ),
                     child: const Text(
-                        'Play Online Audio With DRM Protection and headerRequest'),
+                        'Play Online Audio With DRM Protection And HeaderRequest'),
                   ),
                   const SizedBox(height: 20),
                   Column(

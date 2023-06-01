@@ -20,7 +20,7 @@ class BarePlayerPlugin {
   Future<void> playDRMOnline({
     required String url,
     required String licenseUrl,
-     Map<String, String>? licenseRequestHeader,
+    Map<String, String>? licenseRequestHeader,
   }) async {
     return BarePlayerPluginPlatform.instance.playDRMOnline(
       url: url,
