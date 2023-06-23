@@ -140,7 +140,14 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
 
         } else if ( call.method == "stop") {
             player!!.stop()
-        } else  {
+        } else if (call.method =="seekToPosition") {
+            val position = call.argument<Int>("seconds")
+
+            print("seeking to $position")
+
+            player!!.seekTo(1000 * position!!.toLong())
+
+        }  else {
             result.notImplemented()
         }
     }

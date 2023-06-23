@@ -55,4 +55,8 @@ abstract class BarePlayerPluginPlatform extends PlatformInterface {
   Future<void> stop() {
     throw UnimplementedError('stop() has not been implemented.');
   }
+
+  Future<void> seekToPosition({required int seconds}) {
+    throw UnimplementedError('seekToPosition() has not been implemented.');
+  }
 }

@@ -27,8 +27,8 @@ class _MyAppState extends State<MyApp> {
       'https://samples-files.com/samples/Audio/mp3/sample-file-1.mp3';
 
   final encryptedUrl =
-  'https://1cdb1f9f9b7a67ca92aaa815.blob.core.windows.net/video-output/7iTqGEuWa6bj8AmSujqho4/cmaf/manifest.mpd';
-      // 'https://1cdb1f9f9b7a67ca92aaa815.blob.core.windows.net/video-output/8p4Fq8kD4smqzbExdQTPwt/cmaf/manifest.mpd';
+      'https://1cdb1f9f9b7a67ca92aaa815.blob.core.windows.net/video-output/7iTqGEuWa6bj8AmSujqho4/cmaf/manifest.mpd';
+  // 'https://1cdb1f9f9b7a67ca92aaa815.blob.core.windows.net/video-output/8p4Fq8kD4smqzbExdQTPwt/cmaf/manifest.mpd';
   // 'https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd';
   final licenseUrl =
       'https://proxy.uat.widevine.com/proxy?provider=widevine_test';
@@ -274,7 +274,15 @@ class _MyAppState extends State<MyApp> {
                                 fontWeight: FontWeight.w300,
                                 letterSpacing: 1),
                           ),
-                        )
+                        ),
+                      SizedBox(height: 20),
+                      IconButton(
+                        onPressed: () {
+                          _barePlayerPlugin.seekToPosition(seconds: 3);
+                        },
+                        icon: Icon(Icons.skip_next),
+                        iconSize: 48,
+                      ),
                     ],
                   ),
                 ],
