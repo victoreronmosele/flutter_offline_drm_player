@@ -1,6 +1,7 @@
 package com.example.bare_player_plugin
 
 import android.content.Context
+import android.content.res.AssetFileDescriptor
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
@@ -13,10 +14,15 @@ import com.google.android.exoplayer2.offline.Download
 import com.google.android.exoplayer2.offline.DownloadRequest
 import com.google.android.exoplayer2.offline.DownloadService
 import com.google.android.exoplayer2.source.DefaultMediaSourceFactory
+import com.google.android.exoplayer2.source.MediaSource
+import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.source.dash.DashMediaSource
 import com.google.android.exoplayer2.source.dash.DashUtil
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
 import com.google.android.exoplayer2.upstream.cache.CacheDataSource
+import com.google.common.util.concurrent.FutureCallback
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -25,6 +31,11 @@ import io.flutter.plugin.common.MethodChannel.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import wseemann.media.FFmpegMediaMetadataRetriever
+import java.io.IOException
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
+
 
 /** BarePlayerPlugin */
 class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
@@ -51,7 +62,7 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
         if (call.method == "getPlatformVersion") {
             result.success("Android ${android.os.Build.VERSION.RELEASE}")
         } else if (call.method == "play") {
-            val url = call.argument<String>("url")
+            val url = "https://www.podtrac.com/pts/redirect.mp3/traffic.libsyn.com/upgrade/Upgrade_124.mp3" //call.argument<String>("url")
 
             if (url == null) {
                 result.error("URL_NOT_FOUND", "URL not found", null)
@@ -162,11 +173,9 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
             .setDrmConfiguration(drmConfig.build())
         val mediaSourceFactory = DefaultMediaSourceFactory(context)
             .setDataSourceFactory(cacheDataSourceFactory)
+        val mediaSource = mediaSourceFactory.createMediaSource(mediaItem.build())
 
-        player.setMediaSource(mediaSourceFactory.createMediaSource(mediaItem.build()))
-        player.prepare()
-        player.addListener(listener)
-        player.play()
+        preparePlayerAndPlay( player, mediaSource, url)
 
         channel.invokeMethod("onUrlChanged", url)
 
@@ -225,10 +234,7 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
 
             }
 
-            player.setMediaSource(mediaSource)
-            player.prepare()
-            player.addListener(listener)
-            player.play()
+            preparePlayerAndPlay(player, mediaSource, url)
 
             channel.invokeMethod("onUrlChanged", url)
 
@@ -237,9 +243,17 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
         ) {
             print("error is $e")
         }
-
-
     }
+
+    private fun preparePlayerAndPlay(player: ExoPlayer, mediaSource: MediaSource, url: String) {
+        player.run {
+            setMediaSource(mediaSource)
+            prepare()
+            addListener(getListener( url))
+            play()
+        }
+    }
+
 
 
 
@@ -277,11 +291,10 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
         val mediaItem: MediaItem = MediaItem.fromUri(url)
         player!!.setMediaItem(mediaItem)
         player!!.prepare()
-        player!!.addListener(listener)
+        player!!.addListener(getListener(url))
         player!!.play()
 
         channel.invokeMethod("onUrlChanged", url)
-        print("mediaItem.mediaMetadata.artworkUri ${mediaItem.mediaMetadata.artworkUri}")
 
     }
 
@@ -292,37 +305,194 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     /// listener for player
-    private val listener = object : Player.Listener {
-        override fun onPlaybackStateChanged(state: Int) {
-            val method = "onPlaybackStateChanged"
-            when (state) {
-                Player.STATE_IDLE -> {
-                    // The player does not have any media to play yet.
-                    channel.invokeMethod(method, "Idle")
+    private fun getListener(url: String): Player.Listener {
+        return object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                val method = "onPlaybackStateChanged"
+                when (state) {
+                    Player.STATE_IDLE -> {
+                        // The player does not have any media to play yet.
+                        channel.invokeMethod(method, "Idle")
+                    }
+                    Player.STATE_BUFFERING -> {
+                        // The player is buffering (loading the content)
+                        channel.invokeMethod(method, "Buffering")
+                    }
+                    Player.STATE_READY -> {
+                        // The player is ready to play.
+                        channel.invokeMethod(method, "Ready to play")
+                        extractMetadata(url)
+                    }
+                    Player.STATE_ENDED -> {
+                        // The player has finished playing the media.
+                        channel.invokeMethod(method, "Ended")
+                    }
                 }
-                Player.STATE_BUFFERING -> {
-                    // The player is buffering (loading the content)
-                    channel.invokeMethod(method, "Buffering")
+
+                super.onPlaybackStateChanged(state)
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                val method = "onIsPlayingChanged"
+
+                print("isPlaying: $isPlaying")
+                if (isPlaying) {
+                    channel.invokeMethod(method, "PLAYING")
+                } else {
+                    channel.invokeMethod(method, "PAUSED")
                 }
-                Player.STATE_READY -> {
-                    // The player is ready to play.
-                    channel.invokeMethod(method, "Ready to play")
+
+                super.onIsPlayingChanged(isPlaying)
+            }
+
+            override fun onEvents(player: Player, events: Player.Events) {
+                print (player.mediaMetadata)
+            }
+
+            override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+                print("metadata")
+                mediaMetadata.title?.let(::handleTitle)
+            }
+
+            override fun onMetadata(metadata: Metadata) {
+                print("metadata")
+                print(metadata)
+            }
+
+
+        }
+    }
+
+    fun handleTitle(title: CharSequence) {
+        print ("metadata ")
+        print(title);
+    }
+
+    fun tryFindingErrorSource(url: String) {
+        GlobalScope.launch(Dispatchers.IO) {
+
+            try {
+                var fd: AssetFileDescriptor? = null
+                val uri = Uri.parse(url)
+
+                try {
+                    val resolver = context.contentResolver
+                    fd = try {
+                        resolver.openAssetFileDescriptor(uri, "r")
+                    } catch (e: Exception) {
+                        print("***********\ntryFindingErrorSource | e: $e | uri: $uri")
+                        throw IllegalArgumentException()
+                    }
+                    requireNotNull(fd)
+                    print("***********\ntryFindingErrorSource | fd: $fd")
+                    val descriptor = fd!!.fileDescriptor
+                    print("***********\ntryFindingErrorSource | descriptor: $descriptor")
+                    require(descriptor.valid())
+                    if (fd!!.declaredLength < 0L) {
+                        print("***********\ntryFindingErrorSource | fd!!.declaredLength < 0L")
+                    } else {
+                        print("***********\ntryFindingErrorSource | fd!!.declaredLength >= 0L")
+                    }
+                } catch (var18: SecurityException) {
+                    Log.e("FMMR", "SecurityException: ", var18)
+
+                } finally {
+                    try {
+                        if (fd != null) {
+                            fd!!.close()
+                        }
+                    } catch (var16: IOException) {
+                        Log.e("FMMR", "IOException: ", var16)
+                    }
                 }
-                Player.STATE_ENDED -> {
-                    // The player has finished playing the media.
-                    channel.invokeMethod(method, "Ended")
-                }
+            } catch (e: Exception) {
+                print("***********\ntryFindingErrorSource | error: $e")
             }
         }
+    }
 
-        override fun onIsPlayingChanged(isPlaying: Boolean) {
-            val method = "onIsPlayingChanged"
+    fun extractMetadata(url: String) {
 
-            print("isPlaying: $isPlaying")
-            if (isPlaying) {
-                channel.invokeMethod(method, "PLAYING")
-            } else {
-                channel.invokeMethod(method, "PAUSED")
+        if (true) {
+            print ("***********\nextractMetadata | player: $player")
+
+            player?.mediaMetadata?.let {
+                print("***********\nextractMetadata | mediaMetadata: ${it}")
+            }
+
+            val mediaItem = player?.currentMediaItem
+            val executor: Executor = Executors.newSingleThreadExecutor()
+
+
+            val trackGroupsFuture: ListenableFuture<TrackGroupArray> = MetadataRetriever.retrieveMetadata(context, mediaItem!!)
+            Futures.addCallback(
+                trackGroupsFuture,
+                object : FutureCallback<TrackGroupArray> {
+                    override fun onSuccess(trackGroups: TrackGroupArray) {
+                        val one = trackGroups[0]
+                       print(one)
+
+                        for (j in 0 until one.length) {
+                            val trackMetadata: Metadata? = one.getFormat(j)?.metadata
+                            if (trackMetadata != null) {
+                                print (trackMetadata)
+                            }
+                        }
+
+
+                        val two = trackGroups[1]
+                        print(two)
+
+                        for (j in 0 until two.length) {
+                            val trackMetadata: Metadata? = two.getFormat(j)?.metadata
+                            if (trackMetadata != null) {
+                                print (trackMetadata)
+                            }
+                        }
+                    }
+
+                    override fun onFailure(t: Throwable) {
+                        print(t)
+                    }
+                },
+                executor)
+
+            /// get chapters from metadata
+
+
+
+        }
+
+        if (false) {
+            tryFindingErrorSource(url)
+        } else {
+        }
+
+        if (false) {
+            try {
+                val url =
+                    "https://1cdb1f9f9b7a67ca92aaa815.blob.core.windows.net/video-output/8p4Fq8kD4smqzbExdQTPwt/cmaf/manifest.mpd"
+                print("***********\nextractMetadata")
+                val mmr = FFmpegMediaMetadataRetriever()
+                mmr.setDataSource(url, HashMap<String, String>())
+                print("***********\nextractMetadata setDataSource")
+
+                val chapterCount =
+                    mmr.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_CHAPTER_COUNT).toInt()
+                print("***********\nextractMetadata | chapterCount: $chapterCount")
+
+                for (i in 0 until chapterCount) {
+                    val title =
+                        mmr.extractMetadataFromChapter(
+                            FFmpegMediaMetadataRetriever.METADATA_KEY_TITLE,
+                            i
+                        )
+                    if (title != null) {
+                        print("***********\nextractMetadata | chapter title: $title")
+                    }
+                }
+            } catch (e: Exception) {
+                print("***********\nextractMetadata | error is: $e end")
             }
         }
 
