@@ -197,7 +197,7 @@ class ChaptersScreen extends StatelessWidget {
                       children: [
                         Text(
                           chapters[index].label,
-                          style: const TextStyle(
+                          style: const TextStyle(fontSize: 16,
                             color: Colors.white,
                           ),
                         ),
@@ -206,6 +206,7 @@ class ChaptersScreen extends StatelessWidget {
                               chapters[index].startPosition),
                           style: const TextStyle(
                             color: Colors.white,
+                            fontSize: 20,
                           ),
                         )
                       ],
