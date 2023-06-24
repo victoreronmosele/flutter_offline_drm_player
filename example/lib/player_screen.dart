@@ -1,3 +1,4 @@
+import 'package:bare_player_plugin/bare_player_plugin.dart';
 import 'package:flutter/material.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -7,6 +8,41 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> {
+  final playingString = "PLAYING";
+
+  final _barePlayerPlugin = BarePlayerPlugin();
+
+  final url =
+      "https://1cdb1f9f9b7a67ca92aaa815.blob.core.windows.net/video-output/8p4Fq8kD4smqzbExdQTPwt/cmaf/manifest.mpd";
+
+  bool playing = false;
+  bool playingHasStarted = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+      initialize();
+    });
+  }
+
+  Future<void> initialize() async {
+    _barePlayerPlugin.setUpStateListener(
+        onPlaybackStateChanged: (state) {},
+        onIsPlayingChanged: (isPlaying) {
+          setState(() {
+            playing = isPlaying == playingString;
+
+            if (playing && !playingHasStarted) {
+              playingHasStarted = true;
+            }
+          });
+        },
+        onLicenseKeyAvailable: (key) {},
+        onUrlChanged: (url) {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -26,7 +62,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
               ),
             ),
             const SizedBox(height: 48),
-            const PlayerSection()
+            PlayerSection(
+              isPlaying: playing,
+              onPlay: () {
+                playingHasStarted
+                    ? _barePlayerPlugin.resume()
+                    : _barePlayerPlugin.play(url: url);
+              },
+              onPause: () {
+                _barePlayerPlugin.pause();
+              },
+            )
           ],
         ),
       ),
@@ -35,7 +81,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
 }
 
 class PlayerSection extends StatefulWidget {
-  const PlayerSection({super.key});
+  const PlayerSection({
+    super.key,
+    required this.isPlaying,
+    required this.onPlay,
+    required this.onPause,
+  });
+
+  final bool isPlaying;
+  final VoidCallback onPlay;
+  final VoidCallback onPause;
 
   @override
   State<PlayerSection> createState() => _PlayerSectionState();
@@ -49,7 +104,6 @@ class _PlayerSectionState extends State<PlayerSection> {
   final positionNotifier = ValueNotifier<Duration>(Duration.zero);
   final durationNotifier = ValueNotifier<Duration>(Duration.zero);
 
-  final isPlaying = ValueNotifier<bool>(false);
   final playingChapter = ValueNotifier<Chapter>(Chapter.empty());
 
   @override
@@ -141,11 +195,13 @@ class _PlayerSectionState extends State<PlayerSection> {
                       ),
                     ),
                     IconButton(
-                      onPressed: () {},
-                      icon: Icon(
-                        isPlaying.value
-                            ? Icons.pause_circle
-                            : Icons.play_circle,
+                      onPressed: () {
+                        widget.isPlaying ? widget.onPause() : widget.onPlay();
+                      },
+                      icon: AnimatedIcon(
+                        icon: AnimatedIcons.play_pause,
+                        progress:
+                            AlwaysStoppedAnimation(widget.isPlaying ? 1 : 0),
                         size: 40,
                         color: Colors.white,
                       ),

@@ -58,11 +58,13 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
+        val methodCall = call.method
 
-        if (call.method == "getPlatformVersion") {
+        if (methodCall == "getPlatformVersion") {
             result.success("Android ${android.os.Build.VERSION.RELEASE}")
-        } else if (call.method == "play") {
-            val url = "https://www.podtrac.com/pts/redirect.mp3/traffic.libsyn.com/upgrade/Upgrade_124.mp3" //call.argument<String>("url")
+        } else if (methodCall == "play") {
+            val url =
+                "https://www.podtrac.com/pts/redirect.mp3/traffic.libsyn.com/upgrade/Upgrade_124.mp3" //call.argument<String>("url")
 
             if (url == null) {
                 result.error("URL_NOT_FOUND", "URL not found", null)
@@ -71,17 +73,18 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
 
             playAudio(url)
 
-        } else if (call.method == "playDRMOnline") {
+        } else if (methodCall == "playDRMOnline") {
 
             val url = call.argument<String>("url")
 
-            print ("url is $url")
+            print("url is $url")
 
             val licenseUrl = call.argument<String>("licenseUrl")
 
 
-            val  licenseRequestHeader: Map<String,String>? = call.argument<Map<String,String>>("licenseRequestHeader")
-            print ("licenseRequestHeader is $licenseRequestHeader")
+            val licenseRequestHeader: Map<String, String>? =
+                call.argument<Map<String, String>>("licenseRequestHeader")
+            print("licenseRequestHeader is $licenseRequestHeader")
 
             if (url == null) {
                 result.error("URL_NOT_FOUND", "URL not found", null)
@@ -102,7 +105,7 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
                 player = player!!
             )
 
-        } else if (call.method == "playDRMOffline") {
+        } else if (methodCall == "playDRMOffline") {
             val url = call.argument<String>("url")
             val licenseUrl = call.argument<String>("licenseUrl")
             val licenseKey = call.argument<String>("licenseKey")
@@ -138,16 +141,23 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
                 player = player!!,
             )
 
-        } else if ( call.method == "stop") {
+        } else if (methodCall == "stop") {
             player!!.stop()
-        } else if (call.method =="seekToPosition") {
+        } else if (methodCall == "seekToPosition") {
             val position = call.argument<Int>("seconds")
 
             print("seeking to $position")
 
             player!!.seekTo(1000 * position!!.toLong())
 
-        }  else {
+        } else if (methodCall == "pause"){
+            print ("pausing")
+
+            player!!.pause()
+
+        } else if (methodCall == "resume") {
+            player!!.play()
+        } else {
             result.notImplemented()
         }
     }
@@ -165,9 +175,9 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
         val dataSourceFactory = DemoUtil.getFileDataSourceFactory( /* context= */context)
 
         val cacheDataSourceFactory = CacheDataSource.Factory()
-                .setCache(downloadCache !!)
-                .setUpstreamDataSourceFactory(dataSourceFactory)
-                .setCacheWriteDataSinkFactory(null)
+            .setCache(downloadCache!!)
+            .setUpstreamDataSourceFactory(dataSourceFactory)
+            .setCacheWriteDataSinkFactory(null)
 
         val licenseByteArray = licenseKey.toByteArray()
 
@@ -182,26 +192,31 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
             .setDataSourceFactory(cacheDataSourceFactory)
         val mediaSource = mediaSourceFactory.createMediaSource(mediaItem.build())
 
-        preparePlayerAndPlay( player, mediaSource, url)
+        preparePlayerAndPlay(player, mediaSource, url)
 
         channel.invokeMethod("onUrlChanged", url)
 
     }
 
 
-    private fun playAudioDrmOnline(url: String, licenseUrl: String, licenseRequestHeader:Map<String,String>?, player: ExoPlayer) {
+    private fun playAudioDrmOnline(
+        url: String,
+        licenseUrl: String,
+        licenseRequestHeader: Map<String, String>?,
+        player: ExoPlayer
+    ) {
         try {
             print("playAudioDrmOnline")
             val defaultHttpDataSourceFactory = DefaultHttpDataSource.Factory()
 
-            var drmConfig : MediaItem.DrmConfiguration.Builder
-            if(licenseRequestHeader != null){
-                 drmConfig = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
-                .setLicenseUri(licenseUrl)
-                .setLicenseRequestHeaders(licenseRequestHeader)
+            var drmConfig: MediaItem.DrmConfiguration.Builder
+            if (licenseRequestHeader != null) {
+                drmConfig = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
+                    .setLicenseUri(licenseUrl)
+                    .setLicenseRequestHeaders(licenseRequestHeader)
             } else {
-                 drmConfig = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
-                .setLicenseUri(licenseUrl)
+                drmConfig = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
+                    .setLicenseUri(licenseUrl)
             }
 
             val mediaItem = MediaItem.Builder()
@@ -212,28 +227,29 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
             GlobalScope.launch(Dispatchers.IO) {
                 try {
 
-                val method = "onKeyAvailable"
-                license = downloadLicense(licenseUrl, Uri.parse(url))
+                    val method = "onKeyAvailable"
+                    license = downloadLicense(licenseUrl, Uri.parse(url))
 
-                val licenseUrlString = license!!.first?.let { String(it) }
+                    val licenseUrlString = license!!.first?.let { String(it) }
 
-                val handler = Handler(Looper.getMainLooper())
-                handler.post {
-                    // Code to be executed on the UI thread
-                    channel.invokeMethod(method, licenseUrlString)
-                }
+                    val handler = Handler(Looper.getMainLooper())
+                    handler.post {
+                        // Code to be executed on the UI thread
+                        channel.invokeMethod(method, licenseUrlString)
+                    }
 
-                val notificationChannelId = "com.bare_player_plugin"
+                    val notificationChannelId = "com.bare_player_plugin"
 
-                val downloadRequest = DownloadRequest.Builder(notificationChannelId, Uri.parse(url)).build()
+                    val downloadRequest =
+                        DownloadRequest.Builder(notificationChannelId, Uri.parse(url)).build()
 
-                DownloadService.sendAddDownload(
+                    DownloadService.sendAddDownload(
                         context,
                         DemoDownloadService::class.java,
                         downloadRequest,
                         Download.STOP_REASON_NONE,
                         /* foreground= */ false
-                )
+                    )
 
                 } catch (e: Exception) {
                     print("Download error is \n$e")
@@ -256,12 +272,10 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
         player.run {
             setMediaSource(mediaSource)
             prepare()
-            addListener(getListener( url))
+            addListener(getListener(url))
             play()
         }
     }
-
-
 
 
     private fun downloadLicense(drmLicenseUrl: String, videoPath: Uri): Pair<ByteArray?, Long>? {
@@ -353,7 +367,7 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
             }
 
             override fun onEvents(player: Player, events: Player.Events) {
-                print (player.mediaMetadata)
+                print(player.mediaMetadata)
             }
 
             override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
@@ -371,7 +385,7 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     fun handleTitle(title: CharSequence) {
-        print ("metadata ")
+        print("metadata ")
         print(title);
     }
 
@@ -421,7 +435,7 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
     fun extractMetadata(url: String) {
 
         if (true) {
-            print ("***********\nextractMetadata | player: $player")
+            print("***********\nextractMetadata | player: $player")
 
             player?.mediaMetadata?.let {
                 print("***********\nextractMetadata | mediaMetadata: ${it}")
@@ -431,25 +445,23 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
             val executor: Executor = Executors.newSingleThreadExecutor()
 
 
-            val trackGroupsFuture: ListenableFuture<TrackGroupArray> = MetadataRetriever.retrieveMetadata(context, mediaItem!!)
+            val trackGroupsFuture: ListenableFuture<TrackGroupArray> =
+                MetadataRetriever.retrieveMetadata(context, mediaItem!!)
             Futures.addCallback(
                 trackGroupsFuture,
                 object : FutureCallback<TrackGroupArray> {
                     override fun onSuccess(trackGroups: TrackGroupArray) {
-                        for (i in 0  until  trackGroups.length) {
+                        for (i in 0 until trackGroups.length) {
                             val trackGroup = trackGroups.get(i)
 
                             for (j in 0 until trackGroup.length) {
                                 val trackMetadata: Metadata? = trackGroup.getFormat(j)?.metadata
                                 if (trackMetadata != null) {
-                                    print (trackMetadata)
+                                    print(trackMetadata)
                                 }
                             }
 
                         }
-
-
-
 
 
                     }
@@ -458,10 +470,10 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
                         print(t)
                     }
                 },
-                executor)
+                executor
+            )
 
             /// get chapters from metadata
-
 
 
         }
@@ -498,7 +510,6 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
                 print("***********\nextractMetadata | error is: $e end")
             }
         }
-
 
 
     }

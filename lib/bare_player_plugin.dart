@@ -44,4 +44,12 @@ class BarePlayerPlugin {
   Future<void> seekToPosition({required int seconds}) {
     return BarePlayerPluginPlatform.instance.seekToPosition(seconds: seconds);
   }
+
+  Future<void> pause() {
+    return BarePlayerPluginPlatform.instance.pause();
+  }
+
+  Future<void> resume() {
+    return BarePlayerPluginPlatform.instance.resume();
+  }
 }

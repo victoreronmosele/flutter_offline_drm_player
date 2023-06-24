@@ -88,4 +88,14 @@ class MethodChannelBarePlayerPlugin extends BarePlayerPluginPlatform {
       'seconds': seconds,
     });
   }
+
+  @override
+  Future<void> pause() {
+    return methodChannel.invokeMethod<void>('pause');
+  }
+
+  @override
+  Future<void> resume() {
+    return methodChannel.invokeMethod<void>('resume');
+  }
 }
