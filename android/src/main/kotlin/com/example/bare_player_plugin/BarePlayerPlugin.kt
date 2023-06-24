@@ -436,26 +436,22 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
                 trackGroupsFuture,
                 object : FutureCallback<TrackGroupArray> {
                     override fun onSuccess(trackGroups: TrackGroupArray) {
-                        val one = trackGroups[0]
-                       print(one)
+                        for (i in 0  until  trackGroups.length) {
+                            val trackGroup = trackGroups.get(i)
 
-                        for (j in 0 until one.length) {
-                            val trackMetadata: Metadata? = one.getFormat(j)?.metadata
-                            if (trackMetadata != null) {
-                                print (trackMetadata)
+                            for (j in 0 until trackGroup.length) {
+                                val trackMetadata: Metadata? = trackGroup.getFormat(j)?.metadata
+                                if (trackMetadata != null) {
+                                    print (trackMetadata)
+                                }
                             }
+
                         }
 
 
-                        val two = trackGroups[1]
-                        print(two)
 
-                        for (j in 0 until two.length) {
-                            val trackMetadata: Metadata? = two.getFormat(j)?.metadata
-                            if (trackMetadata != null) {
-                                print (trackMetadata)
-                            }
-                        }
+
+
                     }
 
                     override fun onFailure(t: Throwable) {
