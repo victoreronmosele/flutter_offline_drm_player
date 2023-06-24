@@ -83,7 +83,11 @@ class _InitialExperimentalScreenState extends State<InitialExperimentalScreen> {
       setState(() {
         _url = url;
       });
-    });
+    },
+      onDurationChanged: (duration) {
+        print('duration: $duration');
+      }
+    );
   }
 
   @override

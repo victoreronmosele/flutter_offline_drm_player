@@ -12,11 +12,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   final _barePlayerPlugin = BarePlayerPlugin();
 
+  // encrypted url with id3 chapter tags
+  // "https://www.podtrac.com/pts/redirect.mp3/traffic.libsyn.com/upgrade/Upgrade_124.mp3"
   final url =
-      "https://1cdb1f9f9b7a67ca92aaa815.blob.core.windows.net/video-output/8p4Fq8kD4smqzbExdQTPwt/cmaf/manifest.mpd";
+      "https://samples-files.com/samples/Audio/mp3/sample-file-1.mp3";
 
   bool playing = false;
   bool playingHasStarted = false;
+
+  double durationInSeconds = 0;
 
   @override
   void initState() {
@@ -29,18 +33,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<void> initialize() async {
     _barePlayerPlugin.setUpStateListener(
-        onPlaybackStateChanged: (state) {},
-        onIsPlayingChanged: (isPlaying) {
-          setState(() {
-            playing = isPlaying == playingString;
+      onPlaybackStateChanged: (state) {},
+      onIsPlayingChanged: (isPlaying) {
+        setState(() {
+          playing = isPlaying == playingString;
 
-            if (playing && !playingHasStarted) {
-              playingHasStarted = true;
-            }
-          });
-        },
-        onLicenseKeyAvailable: (key) {},
-        onUrlChanged: (url) {});
+          if (playing && !playingHasStarted) {
+            playingHasStarted = true;
+          }
+        });
+      },
+      onLicenseKeyAvailable: (key) {},
+      onUrlChanged: (url) {},
+      onDurationChanged: (duration) {
+        setState(() {
+          durationInSeconds = duration / 1000;
+        });
+      },
+    );
   }
 
   @override
@@ -64,14 +74,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
             const SizedBox(height: 48),
             PlayerSection(
               isPlaying: playing,
-              onPlay: () {
-                playingHasStarted
-                    ? _barePlayerPlugin.resume()
-                    : _barePlayerPlugin.play(url: url);
+              onPlay: () async {
+                if (playingHasStarted) {
+                  _barePlayerPlugin.resume();
+                } else {
+                  _barePlayerPlugin.play(url: url);
+                }
               },
               onPause: () {
                 _barePlayerPlugin.pause();
               },
+              durationInSeconds: durationInSeconds,
             )
           ],
         ),
@@ -86,11 +99,13 @@ class PlayerSection extends StatefulWidget {
     required this.isPlaying,
     required this.onPlay,
     required this.onPause,
+    required this.durationInSeconds,
   });
 
   final bool isPlaying;
   final VoidCallback onPlay;
   final VoidCallback onPause;
+  final double durationInSeconds;
 
   @override
   State<PlayerSection> createState() => _PlayerSectionState();
@@ -108,6 +123,10 @@ class _PlayerSectionState extends State<PlayerSection> {
 
   @override
   Widget build(BuildContext context) {
+    final timeLeftString = getTimeLeft(
+        durationInSeconds: widget.durationInSeconds,
+        value: positionNotifier.value);
+
     return ValueListenableBuilder(
         valueListenable: positionNotifier,
         builder: (context, sliderValue, child) {
@@ -164,6 +183,9 @@ class _PlayerSectionState extends State<PlayerSection> {
                         style: const TextStyle(
                           color: Colors.white,
                         ),
+                      ),
+                      Text(
+                        timeLeftString.isEmpty ? "" : "$timeLeftString left",
                       ),
                       Text(
                         formatToReadableDuration(
@@ -342,7 +364,28 @@ Duration formatToDuration(String stringDuration) {
 
 String formatToReadableDuration(Duration duration) {
   final hours = duration.inHours;
-  final minutes = duration.inMinutes - (hours * 60);
-  final seconds = duration.inSeconds - (minutes * 60);
+  final minutes = duration.inMinutes.remainder(60);
+  final seconds = duration.inSeconds.remainder(60);
   return "${hours.toString().padLeft(2, "0")}:${minutes.toString().padLeft(2, "0")}:${seconds.toString().padLeft(2, "0")}";
+}
+
+String formatToReadableDurationForTimeLeft(Duration duration) {
+  final hours = duration.inHours;
+  final minutes = duration.inMinutes.remainder(60);
+  final seconds = duration.inSeconds.remainder(60);
+  return "${hours}h ${minutes}m ${seconds}s";
+}
+
+
+String getTimeLeft({
+  required double durationInSeconds,
+  required Duration value,
+}) {
+  if (durationInSeconds == 0) return '';
+
+  final duration = Duration(seconds: durationInSeconds.toInt());
+
+  final timeLeft = duration - value;
+
+  return formatToReadableDurationForTimeLeft(timeLeft);
 }

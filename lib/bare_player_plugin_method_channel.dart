@@ -28,7 +28,9 @@ class MethodChannelBarePlayerPlugin extends BarePlayerPluginPlatform {
       {required void Function(String) onPlaybackStateChanged,
       required void Function(String) onIsPlayingChanged,
       required void Function(String) onUrlChanged,
-      required void Function(String) onKeyAvailable}) {
+      required void Function(String) onKeyAvailable,
+      required void Function(int) onDurationChanged,
+      }) {
     print('Flutter/setUpStateListener');
     methodChannel.setMethodCallHandler((call) async {
       final method = call.method;
@@ -48,6 +50,10 @@ class MethodChannelBarePlayerPlugin extends BarePlayerPluginPlatform {
 
       if (method == 'onUrlChanged') {
         onUrlChanged(args);
+      }
+
+      if (method == 'onDurationChanged') {
+        onDurationChanged(args);
       }
     });
   }
@@ -98,4 +104,6 @@ class MethodChannelBarePlayerPlugin extends BarePlayerPluginPlatform {
   Future<void> resume() {
     return methodChannel.invokeMethod<void>('resume');
   }
+
+
 }

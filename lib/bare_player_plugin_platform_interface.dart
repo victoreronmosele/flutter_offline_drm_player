@@ -35,7 +35,9 @@ abstract class BarePlayerPluginPlatform extends PlatformInterface {
       {required void Function(String) onPlaybackStateChanged,
       required void Function(String) onIsPlayingChanged,
       required void Function(String) onUrlChanged,
-      required void Function(String) onKeyAvailable}) {
+      required void Function(String) onKeyAvailable,
+      required void Function(int) onDurationChanged,
+      }) {
     throw UnimplementedError('setUpStateListener() has not been implemented.');
   }
 

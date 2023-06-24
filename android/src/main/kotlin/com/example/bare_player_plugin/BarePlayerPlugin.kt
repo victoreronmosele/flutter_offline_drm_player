@@ -64,7 +64,7 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
             result.success("Android ${android.os.Build.VERSION.RELEASE}")
         } else if (methodCall == "play") {
             val url =
-                "https://www.podtrac.com/pts/redirect.mp3/traffic.libsyn.com/upgrade/Upgrade_124.mp3" //call.argument<String>("url")
+                 call.argument<String>("url")
 
             if (url == null) {
                 result.error("URL_NOT_FOUND", "URL not found", null)
@@ -104,6 +104,7 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
                 licenseRequestHeader = licenseRequestHeader,
                 player = player!!
             )
+
 
         } else if (methodCall == "playDRMOffline") {
             val url = call.argument<String>("url")
@@ -161,6 +162,7 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
             result.notImplemented()
         }
     }
+
 
     private fun playAudioDrmOffline(
         url: String,
@@ -343,6 +345,12 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
                         // The player is ready to play.
                         channel.invokeMethod(method, "Ready to play")
                         extractMetadata(url)
+
+                        val onDurationChangedMethod = "onDurationChanged"
+
+                        val duration = player!!.duration
+
+                        channel.invokeMethod(onDurationChangedMethod, duration)
                     }
                     Player.STATE_ENDED -> {
                         // The player has finished playing the media.

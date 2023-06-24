@@ -9,12 +9,16 @@ class BarePlayerPlugin {
       {required void Function(String) onPlaybackStateChanged,
       required void Function(String) onIsPlayingChanged,
       required void Function(String) onUrlChanged,
-      required void Function(String) onLicenseKeyAvailable}) {
+      required void Function(String) onLicenseKeyAvailable,
+      required void Function(int) onDurationChanged,
+      }) {
     BarePlayerPluginPlatform.instance.setUpStateListener(
         onPlaybackStateChanged: onPlaybackStateChanged,
         onUrlChanged: onUrlChanged,
         onIsPlayingChanged: onIsPlayingChanged,
-        onKeyAvailable: onLicenseKeyAvailable);
+        onKeyAvailable: onLicenseKeyAvailable,
+        onDurationChanged: onDurationChanged,
+    );
   }
 
   Future<void> playDRMOnline({
