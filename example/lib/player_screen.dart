@@ -77,6 +77,8 @@ class _PlayerSectionState extends State<PlayerSection> {
                                   ChaptersScreen(chapters: markers),
                             ),
                           ).then((selectedChapter) {
+                            if (selectedChapter == null) return;
+
                             setState(() {
                               playingChapter.value = selectedChapter;
                             });
@@ -197,7 +199,8 @@ class ChaptersScreen extends StatelessWidget {
                       children: [
                         Text(
                           chapters[index].label,
-                          style: const TextStyle(fontSize: 16,
+                          style: const TextStyle(
+                            fontSize: 16,
                             color: Colors.white,
                           ),
                         ),
