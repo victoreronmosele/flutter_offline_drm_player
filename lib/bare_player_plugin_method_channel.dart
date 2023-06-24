@@ -81,4 +81,11 @@ class MethodChannelBarePlayerPlugin extends BarePlayerPluginPlatform {
   Future<void> stop() async {
     methodChannel.invokeMethod<void>('stop');
   }
+
+  @override
+  Future<void> seekToPosition({required int seconds}) {
+    return methodChannel.invokeMethod<void>('seekToPosition', <String, dynamic>{
+      'seconds': seconds,
+    });
+  }
 }
