@@ -1,5 +1,6 @@
 import 'package:bare_player_plugin/bare_player_plugin.dart';
 import 'package:flutter/material.dart';
+import 'package:equatable/equatable.dart';
 
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({super.key});
@@ -12,15 +13,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   final _barePlayerPlugin = BarePlayerPlugin();
 
-  // encrypted url with id3 chapter tags
+  //  url with id3 chapter tags
   // "https://www.podtrac.com/pts/redirect.mp3/traffic.libsyn.com/upgrade/Upgrade_124.mp3"
-  final url =
-      "https://samples-files.com/samples/Audio/mp3/sample-file-1.mp3";
+  final audioUrl =
+      "https://1cdb1f9f9b7a67ca92aaa815.blob.core.windows.net/video-output/7iTqGEuWa6bj8AmSujqho4/cmaf/manifest.mpd";
+
+  final coverImageUrl = "https://m.media-amazon.com/images/I/51-nXsSRfZL.jpg";
 
   bool playing = false;
   bool playingHasStarted = false;
 
   double durationInSeconds = 0;
+  double positionInSeconds = 0;
 
   @override
   void initState() {
@@ -50,6 +54,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
           durationInSeconds = duration / 1000;
         });
       },
+      onPositionChanged: (position) {
+        setState(() {
+          positionInSeconds = position / 1000;
+        });
+
+        print("=>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> $positionInSeconds");
+      },
     );
   }
 
@@ -60,34 +71,55 @@ class _PlayerScreenState extends State<PlayerScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(20.0),
-              height: 320,
-              width: double.infinity,
-              decoration:
-                  BoxDecoration(borderRadius: BorderRadius.circular(24)),
-              child: Image.asset(
-                "assets/cover.jpeg",
-                fit: BoxFit.contain,
-              ),
+            Expanded(
+              child: CoverImage(url: coverImageUrl),
             ),
-            const SizedBox(height: 48),
-            PlayerSection(
-              isPlaying: playing,
-              onPlay: () async {
-                if (playingHasStarted) {
-                  _barePlayerPlugin.resume();
-                } else {
-                  _barePlayerPlugin.play(url: url);
-                }
-              },
-              onPause: () {
-                _barePlayerPlugin.pause();
-              },
-              durationInSeconds: durationInSeconds,
+            const SizedBox(height: 16),
+            Expanded(
+              child: PlayerSection(
+                isPlaying: playing,
+                onPlay: () async {
+                  if (playingHasStarted) {
+                    _barePlayerPlugin.resume();
+                  } else {
+                    _barePlayerPlugin.play(url: audioUrl);
+                  }
+                },
+                onPause: () {
+                  _barePlayerPlugin.pause();
+                },
+                onChapterChanged: (position) {
+                  print('chapter changed to $position');
+                  _barePlayerPlugin.seekToPosition(seconds: position * 1000);
+                },
+                durationInSeconds: durationInSeconds,
+                positionInSeconds: positionInSeconds,
+              ),
             )
           ],
         ),
+      ),
+    );
+  }
+}
+
+class CoverImage extends StatelessWidget {
+  const CoverImage({
+    super.key,
+    required this.url,
+  });
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20.0),
+      width: double.infinity,
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)),
+      child: Image.network(
+        url,
+        fit: BoxFit.contain,
       ),
     );
   }
@@ -99,162 +131,201 @@ class PlayerSection extends StatefulWidget {
     required this.isPlaying,
     required this.onPlay,
     required this.onPause,
+    required this.onChapterChanged,
     required this.durationInSeconds,
+    required this.positionInSeconds,
   });
 
   final bool isPlaying;
   final VoidCallback onPlay;
   final VoidCallback onPause;
+  final void Function(int) onChapterChanged;
   final double durationInSeconds;
+  final double positionInSeconds;
 
   @override
   State<PlayerSection> createState() => _PlayerSectionState();
 }
 
 class _PlayerSectionState extends State<PlayerSection> {
-  final markers = markersResponse
+  static final markers = markersResponse
       .map((chapterJson) => Chapter.fromJson(chapterJson))
       .toList();
 
-  final positionNotifier = ValueNotifier<Duration>(Duration.zero);
-  final durationNotifier = ValueNotifier<Duration>(Duration.zero);
-
-  final playingChapter = ValueNotifier<Chapter>(Chapter.empty());
+  final playingChapter = ValueNotifier<Chapter>(markers.first);
 
   @override
   Widget build(BuildContext context) {
+    final minSliderValue =
+        playingChapter.value.startPosition.inSeconds.toDouble();
+
+    final endPosition =
+        playingChapter.value.endPosition?.inSeconds.toDouble() ??
+            widget.durationInSeconds;
+
+    final maxSliderValue = endPosition;
+
     final timeLeftString = getTimeLeft(
         durationInSeconds: widget.durationInSeconds,
-        value: positionNotifier.value);
+        positionInSeconds: widget.positionInSeconds);
 
-    return ValueListenableBuilder(
-        valueListenable: positionNotifier,
-        builder: (context, sliderValue, child) {
-          return Container(
-            height: 240,
-            width: double.infinity,
-            color: Colors.black45,
-            child: Column(
+    final timeSpent = widget.positionInSeconds == 0
+        ? 0
+        : (widget.positionInSeconds -
+            playingChapter.value.startPosition.inSeconds.toDouble());
+
+    final double sliderValue = (timeSpent > endPosition || timeSpent <= 0)
+        ? playingChapter.value.startPosition.inSeconds.toDouble()
+        : (maxSliderValue < widget.positionInSeconds)
+            ? minSliderValue
+            : widget.positionInSeconds;
+
+    final chapterIndex = markers.indexOf(playingChapter.value);
+
+    return Container(
+      width: double.infinity,
+      color: Colors.black45,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              IconButton(
+                  color: Colors.white,
+                  icon: const Icon(Icons.list, size: 28),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChaptersScreen(
+                          chapters: markers,
+                          currentChapterIndex:
+                              chapterIndex == -1 ? 0 : chapterIndex,
+                        ),
+                      ),
+                    ).then((selectedChapter) {
+                      if (selectedChapter == null) return;
+
+                      setState(() {
+                        playingChapter.value = selectedChapter;
+                      });
+
+                      widget.onChapterChanged(
+                          selectedChapter.startPosition.inSeconds);
+                    });
+                  }),
+              const SizedBox(width: 48),
+              Expanded(
+                child: Text(
+                  playingChapter.value.label,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    color: Colors.white,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            min: minSliderValue,
+            max: maxSliderValue,
+            value: sliderValue,
+            onChanged: (value) {},
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    IconButton(
-                        color: Colors.white,
-                        icon: const Icon(Icons.list, size: 28),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  ChaptersScreen(chapters: markers),
-                            ),
-                          ).then((selectedChapter) {
-                            if (selectedChapter == null) return;
-
-                            setState(() {
-                              playingChapter.value = selectedChapter;
-                            });
-                          });
-                        }),
-                    const SizedBox(width: 48),
-                    Text(
-                      playingChapter.value.label,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-                Slider(
-                  min: 0,
-                  max: playingChapter.value.endPosition.inSeconds.toDouble(),
-                  value: sliderValue.inSeconds.toDouble(),
-                  onChanged: (value) {},
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        formatToReadableDuration(positionNotifier.value),
-                        style: const TextStyle(
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        timeLeftString.isEmpty ? "" : "$timeLeftString left",
-                      ),
-                      Text(
-                        formatToReadableDuration(
-                            playingChapter.value.endPosition),
-                        style: const TextStyle(
-                          color: Colors.white,
-                        ),
-                      )
-                    ],
+                Text(
+                  formatToReadableDuration(
+                      Duration(seconds: widget.positionInSeconds.toInt())),
+                  style: const TextStyle(
+                    color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 32),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    IconButton(
-                      onPressed: () {},
-                      icon: const Icon(
-                        Icons.skip_previous,
-                        color: Colors.white,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () {},
-                      icon: const Icon(
-                        Icons.replay_30_sharp,
-                        size: 40,
-                        color: Colors.white,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        widget.isPlaying ? widget.onPause() : widget.onPlay();
-                      },
-                      icon: AnimatedIcon(
-                        icon: AnimatedIcons.play_pause,
-                        progress:
-                            AlwaysStoppedAnimation(widget.isPlaying ? 1 : 0),
-                        size: 40,
-                        color: Colors.white,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () {},
-                      icon: const Icon(
-                        Icons.forward_30_sharp,
-                        size: 32,
-                        color: Colors.white,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () {},
-                      icon: const Icon(
-                        Icons.skip_next,
-                        color: Colors.white,
-                      ),
-                    )
-                  ],
+                Text(
+                  timeLeftString.isEmpty ? "" : "$timeLeftString left",
+                ),
+                Text(
+                  formatToReadableDuration(
+                      Duration(seconds: endPosition.toInt())),
+                  style: const TextStyle(
+                    color: Colors.white,
+                  ),
                 )
               ],
             ),
-          );
-        });
+          ),
+          const SizedBox(height: 48),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(
+                  Icons.skip_previous,
+                  color: Colors.white,
+                ),
+                iconSize: 44,
+              ),
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(
+                  Icons.replay_30_sharp,
+                  color: Colors.white,
+                ),
+                iconSize: 44,
+              ),
+              Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  onPressed: () {
+                    widget.isPlaying ? widget.onPause() : widget.onPlay();
+                  },
+                  icon: AnimatedIcon(
+                    icon: AnimatedIcons.play_pause,
+                    progress: AlwaysStoppedAnimation(widget.isPlaying ? 1 : 0),
+                    color: Colors.black,
+                  ),
+                  iconSize: 64,
+                ),
+              ),
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(
+                  Icons.forward_30_sharp,
+                  color: Colors.white,
+                ),
+                iconSize: 44,
+              ),
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(
+                  Icons.skip_next,
+                  color: Colors.white,
+                ),
+                iconSize: 44,
+              )
+            ],
+          )
+        ],
+      ),
+    );
   }
 }
 
 class ChaptersScreen extends StatelessWidget {
-  const ChaptersScreen({required this.chapters, super.key});
+  const ChaptersScreen(
+      {required this.chapters, required this.currentChapterIndex, super.key});
+
   final List<Chapter> chapters;
+  final int currentChapterIndex;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -262,94 +333,95 @@ class ChaptersScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.black,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: SafeArea(
-          child: ListView.builder(
-              itemCount: chapters.length,
-              itemBuilder: (context, index) {
-                return GestureDetector(
-                  onTap: () => Navigator.pop(context, chapters[index]),
+      body: SafeArea(
+        child: ListView.builder(
+            itemCount: chapters.length,
+            itemBuilder: (context, index) {
+              return GestureDetector(
+                onTap: () => Navigator.pop(context, chapters[index]),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: index == this.currentChapterIndex
+                        ? Colors.blue.withOpacity(0.3)
+                        : Colors.transparent,
+                  ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 20.0, horizontal: 20.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(
-                          chapters[index].label,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.white,
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            chapters[index].label,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
-                        Text(
-                          formatToReadableDuration(
-                              chapters[index].startPosition),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
+                        Expanded(
+                          flex: 1,
+                          child: Text(
+                            formatToReadableDuration(
+                                chapters[index].startPosition),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                            ),
+                            textAlign: TextAlign.end,
                           ),
                         )
                       ],
                     ),
                   ),
-                );
-              }),
-        ),
+                ),
+              );
+            }),
       ),
     );
   }
 }
 
-/// Response and Model
-/// 00:20:37
 final markersResponse = [
   {
-    "label": "Chapter 1",
+    "label": "Opening Credits",
     "start_position": "00:00:00",
-    "end_position": "00:00:28"
+    "end_position": "00:01:59"
   },
   {
-    "label": "Chapter 2",
-    "start_position": "00:00:29",
-    "end_position": "00:03:19"
+    "label": "Introduction: My Story",
+    "start_position": "00:02:00",
+    "end_position": "00:04:00"
   },
   {
-    "label": "Chapter 3",
-    "start_position": "00:03:20",
-    "end_position": "00:08:19"
-  },
-  {
-    "label": "Chapter 4",
-    "start_position": "00:08:20",
-    "end_position": "00:11:40"
-  },
-  {
-    "label": "Chapter 5",
-    "start_position": "00:11:41",
-    "end_position": "00:20:37"
-  },
+    "label": "The Fundamentals: Why Tiny Changes Make a Big Difference",
+    "start_position": "00:04:01",
+  }
 ];
 
-class Chapter {
+class Chapter extends Equatable {
   const Chapter({
     required this.startPosition,
-    required this.endPosition,
     required this.label,
+    this.endPosition,
   });
   final String label;
-  final Duration startPosition, endPosition;
-
-  factory Chapter.empty() {
-    return const Chapter(
-        startPosition: Duration.zero, label: "", endPosition: Duration.zero);
-  }
+  final Duration startPosition;
+  final Duration? endPosition;
 
   factory Chapter.fromJson(Map<String, dynamic> json) => Chapter(
         startPosition: formatToDuration(json["start_position"]),
-        endPosition: formatToDuration(json["end_position"]),
+        endPosition: json["end_position"] == null
+            ? null
+            : formatToDuration(json["end_position"]),
         label: json["label"],
       );
+
+  @override
+  List<Object?> get props => [startPosition, endPosition, label];
 }
 
 ///Utils
@@ -373,19 +445,18 @@ String formatToReadableDurationForTimeLeft(Duration duration) {
   final hours = duration.inHours;
   final minutes = duration.inMinutes.remainder(60);
   final seconds = duration.inSeconds.remainder(60);
-  return "${hours}h ${minutes}m ${seconds}s";
+  return "${hours == 0 ? '' : '${hours}h '}${minutes}m ${seconds}s";
 }
-
 
 String getTimeLeft({
   required double durationInSeconds,
-  required Duration value,
+  required double positionInSeconds,
 }) {
   if (durationInSeconds == 0) return '';
 
-  final duration = Duration(seconds: durationInSeconds.toInt());
-
-  final timeLeft = duration - value;
+  final timeLeft = Duration(
+    seconds: (durationInSeconds - positionInSeconds).toInt(),
+  );
 
   return formatToReadableDurationForTimeLeft(timeLeft);
 }

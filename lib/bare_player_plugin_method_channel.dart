@@ -30,6 +30,7 @@ class MethodChannelBarePlayerPlugin extends BarePlayerPluginPlatform {
       required void Function(String) onUrlChanged,
       required void Function(String) onKeyAvailable,
       required void Function(int) onDurationChanged,
+      required void Function(int) onPositionChanged
       }) {
     print('Flutter/setUpStateListener');
     methodChannel.setMethodCallHandler((call) async {
@@ -54,6 +55,10 @@ class MethodChannelBarePlayerPlugin extends BarePlayerPluginPlatform {
 
       if (method == 'onDurationChanged') {
         onDurationChanged(args);
+      }
+
+      if (method == 'onPositionChanged') {
+        onPositionChanged(args);
       }
     });
   }

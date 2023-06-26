@@ -86,7 +86,10 @@ class _InitialExperimentalScreenState extends State<InitialExperimentalScreen> {
     },
       onDurationChanged: (duration) {
         print('duration: $duration');
-      }
+      },
+      onPositionChanged: (position) {
+        print('position: $position');
+      },
     );
   }
 

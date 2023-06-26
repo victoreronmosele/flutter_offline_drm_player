@@ -11,6 +11,7 @@ class BarePlayerPlugin {
       required void Function(String) onUrlChanged,
       required void Function(String) onLicenseKeyAvailable,
       required void Function(int) onDurationChanged,
+      required void Function(int) onPositionChanged
       }) {
     BarePlayerPluginPlatform.instance.setUpStateListener(
         onPlaybackStateChanged: onPlaybackStateChanged,
@@ -18,6 +19,7 @@ class BarePlayerPlugin {
         onIsPlayingChanged: onIsPlayingChanged,
         onKeyAvailable: onLicenseKeyAvailable,
         onDurationChanged: onDurationChanged,
+        onPositionChanged: onPositionChanged
     );
   }
 
