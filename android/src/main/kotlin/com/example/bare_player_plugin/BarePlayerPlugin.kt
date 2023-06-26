@@ -149,7 +149,7 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
 
             print("seeking to $position")
 
-            player!!.seekTo(1000 * position!!.toLong())
+            player!!.seekTo( position!!.toLong())
 
         } else if (methodCall == "pause"){
             print ("pausing")
@@ -365,10 +365,39 @@ class BarePlayerPlugin : FlutterPlugin, MethodCallHandler {
                 val method = "onIsPlayingChanged"
 
                 print("isPlaying: $isPlaying")
+
+                channel.invokeMethod(method, "PLAYING")
+
+                val onPositionChangedMethod = "onPositionChanged"
+
+                val handler = Handler(Looper.getMainLooper())
+
+                print ("handler")
+
+                var runnable = object : Runnable {
+                    override fun run() {
+//                        print ("runnable")
+
+                        val position = player!!.currentPosition
+
+                        channel.invokeMethod(onPositionChangedMethod, position)
+
+                        handler.postDelayed(this, 1000)
+                    }
+                }
+
                 if (isPlaying) {
-                    channel.invokeMethod(method, "PLAYING")
+
+
+                    handler.postDelayed(runnable, 0)
+
+//                    print ("runnable started")
+
                 } else {
                     channel.invokeMethod(method, "PAUSED")
+
+                    handler.removeCallbacks(runnable)
+
                 }
 
                 super.onIsPlayingChanged(isPlaying)
